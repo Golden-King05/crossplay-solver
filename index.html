@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NYT Crossplay Solver</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='16' fill='%23b8342b'/%3E%3Ctext x='50' y='68' font-size='60' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Crossplay Solver</h1>
+    <p class="subtitle">An unofficial word finder for the NYT <strong>Crossplay</strong> board game.</p>
+  </header>
+
+  <main>
+    <section class="board-section">
+      <div id="board" class="board" aria-label="Crossplay board"></div>
+      <p class="hint">
+        Click a square to enter a tile already on the board.
+        Type an <strong>uppercase</strong> letter for a normal tile,
+        a <strong>lowercase</strong> letter for a tile played from a blank
+        (scores 0). Press <kbd>Backspace</kbd> or <kbd>Delete</kbd> to clear a square.
+      </p>
+      <div class="board-actions">
+        <button id="clearBoardBtn" type="button">Clear board</button>
+      </div>
+    </section>
+
+    <section class="controls-section">
+      <div class="panel">
+        <h2>Your rack</h2>
+        <input
+          id="rackInput"
+          type="text"
+          maxlength="7"
+          placeholder="e.g. RETAINS or RETAIN?"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <p class="hint">Up to 7 tiles. Use <code>?</code> for a blank tile.</p>
+        <button id="solveBtn" type="button" class="primary">Find best plays</button>
+        <p id="status" class="status" role="status"></p>
+      </div>
+
+      <div class="panel">
+        <h2>Letter values</h2>
+        <div id="letterValues" class="letter-grid"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Best plays</h2>
+        <ol id="results" class="results"></ol>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      Unofficial fan-made tool. Not affiliated with or endorsed by The New York Times.
+      Word list: ENABLE (a public-domain English word list) &mdash; may differ slightly
+      from Crossplay's official dictionary.
+    </p>
+  </footer>
+
+  <script src="js/board.js"></script>
+  <script src="js/trie.js"></script>
+  <script src="js/solver.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
