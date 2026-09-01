@@ -17,6 +17,8 @@ to `main`).
 
 ## How to use it
 
+**Manual entry:**
+
 1. Click any board square to record a tile that's already in play.
    Type an **uppercase** letter for a normal tile, or a **lowercase**
    letter for a tile that was played from a blank (it scores 0 points).
@@ -24,6 +26,19 @@ to `main`).
 3. Click **Find best plays**. Results are sorted by score, highest first.
 4. Click a result to preview it on the board, or **Apply** to commit it
    and keep playing out the rest of the game turn by turn.
+
+**Scan from a photo (instead of typing everything in):**
+
+1. Click **Scan board photo** or **Scan rack photo** and pick a
+   screenshot or photo (on a phone, this opens the camera).
+2. On the photo, click the center of the **top-left** and **bottom-right**
+   playing squares (for the board) or the center of your **first** and
+   **last** tile (for the rack, after setting the tile count).
+3. Click **Scan tiles**. OCR runs locally in your browser and fills in the
+   board/rack for you — no photo is uploaded anywhere.
+4. Double-check the result: OCR isn't perfect, especially for thin
+   letters like I, and it can't tell a blank tile from a normal one, so
+   review before solving.
 
 ## How it works
 
@@ -53,6 +68,26 @@ algorithm (Appel & Jacobson, *"The World's Fastest Scrabble Program"`):
 All of this runs in the browser — no server, no build step, no
 dependencies.
 
+### Scanning a photo
+
+`js/scan.js` turns a photo of the board or rack into letters:
+
+1. You click two reference points on the photo (opposite corners of the
+   board, or the first/last rack tile), which gives the tool the grid's
+   pixel geometry (assuming an unrotated, reasonably straight-on shot).
+2. Each cell is cropped out and checked for a tile: an empty square is a
+   near-uniform color, while a printed letter creates real contrast, so a
+   simple standard-deviation threshold tells them apart.
+3. Filled cells are handed to [Tesseract.js](https://tesseract.projectnaptha.com/)
+   (an OCR engine compiled to WebAssembly) restricted to A-Z, and the
+   recognized letters are dropped straight into the board/rack for you to
+   review.
+
+Tesseract's runtime (worker script, WASM OCR core, English language data)
+is vendored under `vendor/tesseract/` rather than pulled from a CDN at
+run time, so scanning keeps working even if a third-party CDN is down —
+and nothing about your photo ever leaves your browser.
+
 ## Board and tile data
 
 The 15×15 bonus-square layout (`js/board.js`) and letter values were
@@ -62,13 +97,15 @@ transcribed from the official Crossplay board. Letter values and the
 ## Project structure
 
 ```
-index.html         Page markup
-style.css           Styling and board rendering
-js/board.js         Board geometry, bonus squares, tile values
-js/trie.js          Trie (dictionary) implementation
-js/solver.js        Move generator + scorer
-js/app.js           UI wiring
-words/enable1.txt   Dictionary word list
+index.html              Page markup
+style.css               Styling and board rendering
+js/board.js             Board geometry, bonus squares, tile values
+js/trie.js              Trie (dictionary) implementation
+js/solver.js            Move generator + scorer
+js/scan.js              Photo scanning: image slicing, fill detection, OCR
+js/app.js               UI wiring
+words/enable1.txt       Dictionary word list
+vendor/tesseract/       Vendored Tesseract.js OCR runtime (worker, WASM core, eng data)
 ```
 
 ## Running locally

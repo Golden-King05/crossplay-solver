@@ -239,6 +239,132 @@
     renderResults(moves);
   });
 
+  // ---- Scan-from-photo (OCR) wiring ----------------------------------
+
+  const boardPhotoInput = document.getElementById('boardPhotoInput');
+  const rackPhotoInput = document.getElementById('rackPhotoInput');
+  const scanOverlay = document.getElementById('scanOverlay');
+  const scanInstructions = document.getElementById('scanInstructions');
+  const scanCanvas = document.getElementById('scanCanvas');
+  const scanCtx = scanCanvas.getContext('2d');
+  const rackCountWrap = document.getElementById('rackCountWrap');
+  const rackCountInput = document.getElementById('rackCountInput');
+  const scanConfirmBtn = document.getElementById('scanConfirmBtn');
+  const scanCancelBtn = document.getElementById('scanCancelBtn');
+  const scanProgress = document.getElementById('scanProgress');
+
+  let scanMode = null; // 'board' | 'rack'
+  let scanImage = null;
+  let scanPoints = [];
+  let scanImgScale = 1;
+
+  function drawScanImage(img) {
+    const maxW = 560;
+    scanImgScale = Math.min(1, maxW / img.naturalWidth);
+    scanCanvas.width = Math.round(img.naturalWidth * scanImgScale);
+    scanCanvas.height = Math.round(img.naturalHeight * scanImgScale);
+    scanCtx.drawImage(img, 0, 0, scanCanvas.width, scanCanvas.height);
+  }
+
+  function drawMarker(x, y, label) {
+    scanCtx.fillStyle = '#b8342b';
+    scanCtx.beginPath();
+    scanCtx.arc(x, y, 6, 0, Math.PI * 2);
+    scanCtx.fill();
+    scanCtx.fillStyle = '#ffffff';
+    scanCtx.font = 'bold 12px sans-serif';
+    scanCtx.fillText(label, x + 8, y - 8);
+  }
+
+  function openScanOverlay(mode, img) {
+    scanMode = mode;
+    scanImage = img;
+    scanPoints = [];
+    scanConfirmBtn.disabled = true;
+    scanProgress.textContent = '';
+    rackCountWrap.hidden = mode !== 'rack';
+    scanInstructions.innerHTML =
+      mode === 'board'
+        ? 'Click the <strong>center of the top-left</strong> playing square, then the <strong>center of the bottom-right</strong> playing square.'
+        : 'Click the <strong>center of your first tile</strong>, then the <strong>center of your last tile</strong>.';
+    scanOverlay.hidden = false;
+    drawScanImage(img);
+    scanOverlay.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeScanOverlay() {
+    scanOverlay.hidden = true;
+    scanMode = null;
+    scanImage = null;
+    scanPoints = [];
+  }
+
+  scanCanvas.addEventListener('click', (e) => {
+    if (!scanImage || scanPoints.length >= 2) return;
+    const rect = scanCanvas.getBoundingClientRect();
+    const scaleX = scanCanvas.width / rect.width;
+    const scaleY = scanCanvas.height / rect.height;
+    const px = (e.clientX - rect.left) * scaleX;
+    const py = (e.clientY - rect.top) * scaleY;
+    scanPoints.push({ x: px / scanImgScale, y: py / scanImgScale });
+    drawMarker(px, py, String(scanPoints.length));
+    if (scanPoints.length === 2) scanConfirmBtn.disabled = false;
+  });
+
+  scanCancelBtn.addEventListener('click', closeScanOverlay);
+
+  scanConfirmBtn.addEventListener('click', async () => {
+    if (scanPoints.length < 2) return;
+    scanConfirmBtn.disabled = true;
+    scanCancelBtn.disabled = true;
+    scanProgress.textContent = 'Loading OCR engine…';
+    try {
+      if (scanMode === 'board') {
+        const found = await CrossplayScan.scanBoardFromImage(scanImage, scanPoints, {
+          onProgress: (done, total) => { scanProgress.textContent = `Scanning square ${done}/${total}…`; },
+        });
+        for (const f of found) board.set(f.row, f.col, f.letter, false);
+        clearPreview();
+        renderBoard();
+        setStatus(
+          `Scanned ${found.length} tile${found.length === 1 ? '' : 's'} from the photo. ` +
+          'Review the board and fix any misreads (OCR isn’t perfect), especially blanks — ' +
+          'those need to be re-typed in lowercase.'
+        );
+      } else {
+        const count = Math.max(1, Math.min(7, parseInt(rackCountInput.value, 10) || 7));
+        const letters = await CrossplayScan.scanRackFromImage(scanImage, scanPoints, count, {
+          onProgress: (done, total) => { scanProgress.textContent = `Scanning tile ${done}/${total}…`; },
+        });
+        rackInput.value = letters.join('');
+        setStatus('Scanned your rack — double-check the letters below (a "?" means OCR wasn’t sure).');
+      }
+      closeScanOverlay();
+    } catch (err) {
+      scanProgress.textContent = `Scan failed: ${err.message}`;
+    } finally {
+      scanConfirmBtn.disabled = false;
+      scanCancelBtn.disabled = false;
+    }
+  });
+
+  function wirePhotoInput(input, mode) {
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      try {
+        const img = await CrossplayScan.loadImageFromFile(file);
+        openScanOverlay(mode, img);
+      } catch (err) {
+        setStatus(err.message);
+      }
+    });
+  }
+
+  wirePhotoInput(boardPhotoInput, 'board');
+  wirePhotoInput(rackPhotoInput, 'rack');
+
   buildBoardDom();
   renderBoard();
   renderLetterValues();

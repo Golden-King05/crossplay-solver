@@ -248,6 +248,67 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
   font-size: 0.8rem;
 }
 
+.scan-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.file-btn {
+  flex: 1 1 auto;
+  text-align: center;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.file-btn:hover { background: var(--plain); }
+
+.scan-overlay {
+  margin-top: 1rem;
+  border-top: 1px solid var(--panel-border);
+  padding-top: 1rem;
+}
+
+.scan-canvas-wrap {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  margin: 0.5rem 0;
+}
+
+#scanCanvas {
+  display: block;
+  max-width: 100%;
+  cursor: crosshair;
+}
+
+.scan-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rack-count {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+.rack-count input {
+  width: 3.5rem;
+  padding: 0.25rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
 footer {
   text-align: center;
   color: var(--muted);
