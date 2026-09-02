@@ -267,6 +267,29 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 }
 .file-btn:hover { background: var(--plain); }
 
+.full-width-btn {
+  display: block;
+  width: 100%;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-size: 1rem;
+  padding: 0.65rem 0.75rem;
+}
+.full-width-btn:hover { opacity: 0.92; }
+
+.manual-scan {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--panel-border);
+  padding-top: 0.5rem;
+}
+.manual-scan summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.manual-scan[open] summary { margin-bottom: 0.5rem; }
+
 .scan-overlay {
   margin-top: 1rem;
   border-top: 1px solid var(--panel-border);

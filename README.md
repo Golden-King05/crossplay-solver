@@ -1,9 +1,10 @@
 # Crossplay Solver
 
 An unofficial, fully client-side word finder for **NYT Crossplay**, the
-15×15 tile-laying word game from The New York Times. Enter the tiles
-currently on the board and your 7-tile rack, and it finds every legal
-play, scored highest first.
+15×15 tile-laying word game from The New York Times. Upload a screenshot
+of the board and rack (or enter tiles manually) and it finds the best
+legal plays — accounting for every letter/word bonus square and any
+crossing ("layering") words a placement completes — ranked by score.
 
 Not affiliated with or endorsed by The New York Times.
 
@@ -17,28 +18,36 @@ to `main`).
 
 ## How to use it
 
+**Scan a screenshot (fastest):**
+
+1. Click **Scan a screenshot** and pick one screenshot that shows both
+   the board and your rack (like the normal in-game view).
+2. The board and rack region are found automatically, OCR reads every
+   tile, and — as soon as a rack is found — the solver runs on its own
+   and shows the top 20 plays. No tapping or cropping needed.
+3. Review the result: OCR isn't perfect (see below), so double-check the
+   board and rack before trusting a play, especially any blank tiles
+   (which look just like a normal tile to OCR, and a "?" in the rack,
+   which means OCR wasn't sure).
+
+If auto-detection can't find the board or rack in your screenshot (an
+unusual crop, a heavily cropped image, or a very different color theme),
+open **"Auto-detect didn't work? Scan board/rack separately"** and scan
+each one with two tap-to-calibrate points instead —
+click the center of the **top-left** and **bottom-right** playing squares
+(for the board) or your **first** and **last** tile (for the rack, after
+setting the tile count), then **Scan tiles**.
+
 **Manual entry:**
 
 1. Click any board square to record a tile that's already in play.
    Type an **uppercase** letter for a normal tile, or a **lowercase**
    letter for a tile that was played from a blank (it scores 0 points).
 2. Type your rack (up to 7 tiles) into the rack box. Use `?` for a blank.
-3. Click **Find best plays**. Results are sorted by score, highest first.
+3. Click **Find best plays**. Results are sorted by score, highest first
+   (top 20 shown).
 4. Click a result to preview it on the board, or **Apply** to commit it
    and keep playing out the rest of the game turn by turn.
-
-**Scan from a photo (instead of typing everything in):**
-
-1. Click **Scan board photo** or **Scan rack photo** and pick a
-   screenshot or photo (on a phone, this opens the camera).
-2. On the photo, click the center of the **top-left** and **bottom-right**
-   playing squares (for the board) or the center of your **first** and
-   **last** tile (for the rack, after setting the tile count).
-3. Click **Scan tiles**. OCR runs locally in your browser and fills in the
-   board/rack for you — no photo is uploaded anywhere.
-4. Double-check the result: OCR isn't perfect, especially for thin
-   letters like I, and it can't tell a blank tile from a normal one, so
-   review before solving.
 
 ## How it works
 
@@ -68,20 +77,34 @@ algorithm (Appel & Jacobson, *"The World's Fastest Scrabble Program"`):
 All of this runs in the browser — no server, no build step, no
 dependencies.
 
-### Scanning a photo
+### Scanning a screenshot
 
-`js/scan.js` turns a photo of the board or rack into letters:
+`js/scan.js` turns a screenshot into letters, in three stages:
 
-1. You click two reference points on the photo (opposite corners of the
-   board, or the first/last rack tile), which gives the tool the grid's
-   pixel geometry (assuming an unrotated, reasonably straight-on shot).
-2. Each cell is cropped out and checked for a tile: an empty square is a
-   near-uniform color, while a printed letter creates real contrast, so a
-   simple standard-deviation threshold tells them apart.
-3. Filled cells are handed to [Tesseract.js](https://tesseract.projectnaptha.com/)
-   (an OCR engine compiled to WebAssembly) restricted to A-Z, and the
-   recognized letters are dropped straight into the board/rack for you to
-   review.
+1. **Finding the board and rack automatically.** A tile grid is a large
+   region that differs from the page's flat background on almost every
+   row and column it spans, while surrounding UI (score header, status
+   text) is sparser and much shorter — so the tool profiles how much of
+   each row/column differs from the background color, and looks for the
+   tallest such band (the board) and the next one below it (the rack),
+   then splits the rack's span into individual tiles by finding the gaps
+   between them. This needs the two calibration points only as a manual
+   fallback when auto-detection isn't confident.
+2. **Deciding which squares hold a tile.** This can't rely on "has
+   contrast": this game (like several others) prints a "2L"/"3W"-style
+   label on every empty bonus square, so an empty square has letter-shaped
+   contrast too. What actually separates them is color, so each cell is
+   compared only against other cells of the *same* bonus type (known from
+   the board layout) — since most squares of a given type are still empty
+   at any point in a game, a cell whose brightness is way off its type's
+   median is a tile, regardless of whether tiles run lighter or darker
+   than the board.
+3. **OCR.** Each tile crop is normalized (grayscale, inverted if it's
+   light-on-dark, binarized with Otsu's method to drop shading/shadows
+   down to clean black-on-white) and handed to
+   [Tesseract.js](https://tesseract.projectnaptha.com/) (an OCR engine
+   compiled to WebAssembly) restricted to A–Z, and the recognized letters
+   are dropped straight into the board/rack for you to review.
 
 Tesseract's runtime (worker script, WASM OCR core, English language data)
 is vendored under `vendor/tesseract/` rather than pulled from a CDN at

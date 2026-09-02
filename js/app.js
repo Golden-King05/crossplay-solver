@@ -162,7 +162,7 @@
       resultsEl.innerHTML = '<li class="meta">No legal plays found for this rack.</li>';
       return;
     }
-    const top = moves.slice(0, 25);
+    const top = moves.slice(0, 20);
     top.forEach((m, i) => {
       const li = document.createElement('li');
       const dirWord = m.dir === 'H' ? 'across' : 'down';
@@ -217,7 +217,7 @@
     return trie;
   }
 
-  solveBtn.addEventListener('click', async () => {
+  async function runSolve() {
     const rack = rackInput.value.replace(/[^A-Z?]/g, '').split('');
     if (rack.length === 0) {
       setStatus('Enter your rack first.');
@@ -237,6 +237,10 @@
     const ms = Math.round(performance.now() - t0);
     setStatus(`Found ${moves.length} legal play${moves.length === 1 ? '' : 's'} in ${ms}ms.`);
     renderResults(moves);
+  }
+
+  solveBtn.addEventListener('click', () => {
+    runSolve();
   });
 
   // ---- Scan-from-photo (OCR) wiring ----------------------------------
@@ -364,6 +368,70 @@
 
   wirePhotoInput(boardPhotoInput, 'board');
   wirePhotoInput(rackPhotoInput, 'rack');
+
+  // ---- Auto-scan: one full screenshot, no calibration -----------------
+
+  const autoScanInput = document.getElementById('autoScanInput');
+  const autoScanStatus = document.getElementById('autoScanStatus');
+
+  autoScanInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+
+    autoScanStatus.textContent = 'Reading photo…';
+    let img;
+    try {
+      img = await CrossplayScan.loadImageFromFile(file);
+    } catch (err) {
+      autoScanStatus.textContent = err.message;
+      return;
+    }
+
+    const boardPts = CrossplayScan.autoDetectBoard(img);
+    const rack = CrossplayScan.autoDetectRack(img);
+
+    if (!boardPts && !rack) {
+      autoScanStatus.textContent =
+        'Could not automatically find a board or rack in that image. ' +
+        'Try a more straight-on screenshot, or use "scan board/rack separately" below.';
+      return;
+    }
+
+    let boardCount = 0;
+    if (boardPts) {
+      autoScanStatus.textContent = 'Reading the board…';
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const found = await CrossplayScan.scanBoardFromImage(img, boardPts, {
+        onProgress: (done, total) => { autoScanStatus.textContent = `Reading the board… (${done}/${total})`; },
+      });
+      for (const f of found) board.set(f.row, f.col, f.letter, false);
+      clearPreview();
+      renderBoard();
+      boardCount = found.length;
+    }
+
+    let rackFound = false;
+    if (rack) {
+      autoScanStatus.textContent = 'Reading your rack…';
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const letters = await CrossplayScan.scanRackFromImage(img, rack.points, rack.count, {
+        onProgress: (done, total) => { autoScanStatus.textContent = `Reading your rack… (${done}/${total})`; },
+      });
+      rackInput.value = letters.join('');
+      rackFound = true;
+    }
+
+    const parts = [];
+    parts.push(boardPts ? `found ${boardCount} board tile${boardCount === 1 ? '' : 's'}` : 'couldn’t find the board');
+    parts.push(rackFound ? 'read your rack' : 'couldn’t find the rack');
+    autoScanStatus.textContent =
+      `Scanned screenshot: ${parts.join(', ')}. Review for misreads (OCR isn’t perfect) before solving.`;
+
+    if (rackFound) {
+      await runSolve();
+    }
+  });
 
   buildBoardDom();
   renderBoard();

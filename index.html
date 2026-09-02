@@ -29,22 +29,37 @@
 
     <section class="controls-section">
       <div class="panel">
-        <h2>Scan from a photo</h2>
+        <h2>Scan a screenshot</h2>
         <p class="hint">
-          Take a screenshot or a straight-on photo, then tap two reference
-          points so the tool knows where the tiles are. Recognition (OCR)
-          runs entirely in your browser &mdash; nothing is uploaded anywhere.
+          Upload one screenshot with both the board and your rack visible
+          (like the in-game view) and it's transcribed automatically —
+          no tapping required. Recognition (OCR) runs entirely in your
+          browser &mdash; nothing is uploaded anywhere.
         </p>
-        <div class="scan-row">
-          <label class="file-btn">
-            Scan board photo
-            <input type="file" id="boardPhotoInput" accept="image/*" capture="environment" hidden />
-          </label>
-          <label class="file-btn">
-            Scan rack photo
-            <input type="file" id="rackPhotoInput" accept="image/*" capture="environment" hidden />
-          </label>
-        </div>
+        <label class="file-btn full-width-btn">
+          Scan a screenshot
+          <input type="file" id="autoScanInput" accept="image/*" capture="environment" hidden />
+        </label>
+        <p id="autoScanStatus" class="status" role="status"></p>
+
+        <details class="manual-scan">
+          <summary>Auto-detect didn't work? Scan board/rack separately</summary>
+          <p class="hint">
+            Take a screenshot or a straight-on photo, then tap two reference
+            points so the tool knows where the tiles are.
+          </p>
+          <div class="scan-row">
+            <label class="file-btn">
+              Scan board photo
+              <input type="file" id="boardPhotoInput" accept="image/*" capture="environment" hidden />
+            </label>
+            <label class="file-btn">
+              Scan rack photo
+              <input type="file" id="rackPhotoInput" accept="image/*" capture="environment" hidden />
+            </label>
+          </div>
+        </details>
+
         <div id="scanOverlay" class="scan-overlay" hidden>
           <p id="scanInstructions" class="hint"></p>
           <div class="scan-canvas-wrap">
