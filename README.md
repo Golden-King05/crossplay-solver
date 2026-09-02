@@ -26,9 +26,12 @@ to `main`).
    tile, and — as soon as a rack is found — the solver runs on its own
    and shows the top 20 plays. No tapping or cropping needed.
 3. Review the result: OCR isn't perfect (see below), so double-check the
-   board and rack before trusting a play, especially any blank tiles
-   (which look just like a normal tile to OCR, and a "?" in the rack,
-   which means OCR wasn't sure).
+   board and rack before trusting a play. Blank tiles already played on
+   the board are detected automatically (from the "0" point value a
+   blank always shows, whatever letter it was played as); a rack tile
+   OCR couldn't read at all shows as "?", which the solver treats as an
+   unplayed blank (any letter, 0 points) — check whether it's really a
+   blank or just a misread letter.
 
 If auto-detection can't find the board or rack in your screenshot (an
 unusual crop, a heavily cropped image, or a very different color theme),
@@ -104,7 +107,10 @@ dependencies.
    down to clean black-on-white) and handed to
    [Tesseract.js](https://tesseract.projectnaptha.com/) (an OCR engine
    compiled to WebAssembly) restricted to A–Z, and the recognized letters
-   are dropped straight into the board/rack for you to review.
+   are dropped straight into the board/rack for you to review. For a
+   board tile, its point-value badge (top-right corner) is separately
+   OCR'd with a digit-only pass — a "0" there means the tile was played
+   from a blank (any letter, but worth nothing), whatever letter shows.
 
 Tesseract's runtime (worker script, WASM OCR core, English language data)
 is vendored under `vendor/tesseract/` rather than pulled from a CDN at

@@ -35,10 +35,8 @@
       langPath: VENDOR_BASE,
       logger: onProgress || (() => {}),
     });
-    await worker.setParameters({
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-      tessedit_pageseg_mode: '6', // PSM.SINGLE_BLOCK — more reliable than SINGLE_CHAR for isolated tile letters
-    });
+    // ocrLetter/ocrIsBlankTile each set the whitelist + PSM they need
+    // before recognizing, since the same worker is reused for both.
     return worker;
   }
 
@@ -198,10 +196,47 @@
   // Tesseract found any at all, rather than gating on confidence — the
   // UI's job is showing the result for review, not silently discarding
   // plausible reads.
+  const LETTER_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  // PSM.SINGLE_BLOCK (6) reads most isolated tile letters reliably, but a
+  // handful of otherwise-clean glyphs (Z, O, I in testing) come back
+  // completely empty under it for reasons that don't seem to depend on
+  // image quality. PSM.SINGLE_WORD (8) catches some of those PSM 6
+  // misses (and vice versa), so it's worth a second attempt before
+  // giving up on a cell that's already been identified as a tile.
+  const LETTER_PSMS = ['6', '8'];
+  const DIGIT_MODE = { tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '7' };
+
   async function ocrLetter(w, canvas) {
-    const { data } = await w.recognize(canvas);
-    const text = (data.text || '').toUpperCase().replace(/[^A-Z]/g, '');
-    return text ? text[0] : null;
+    for (const psm of LETTER_PSMS) {
+      await w.setParameters({ tessedit_char_whitelist: LETTER_WHITELIST, tessedit_pageseg_mode: psm });
+      const { data } = await w.recognize(canvas);
+      const text = (data.text || '').toUpperCase().replace(/[^A-Z]/g, '');
+      if (text) return text[0];
+    }
+    return null;
+  }
+
+  // A tile's point-value badge sits in its top-right corner. A tile
+  // played from a blank shows a real letter there (any letter can be
+  // chosen when it's played) but is worth 0 points, and prints that "0"
+  // in the same badge — so reading it tells us isBlank independently of
+  // whatever letter OCR found in the middle of the tile.
+  function extractCornerCanvas(sourceCanvas, cx, cy, cellW, cellH) {
+    const w = cellW * 0.4;
+    const h = cellH * 0.4;
+    const sx = cx + cellW / 2 - w;
+    const sy = cy - cellH / 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(sourceCanvas, sx, sy, w, h, 0, 0, w, h);
+    return canvas;
+  }
+
+  async function ocrIsBlankTile(w, cornerCanvas) {
+    await w.setParameters(DIGIT_MODE);
+    const { data } = await w.recognize(upscale(cornerCanvas, 80, 12));
+    return (data.text || '').replace(/[^0-9]/g, '') === '0';
   }
 
   // points: [{x,y}, {x,y}] = natural-image-pixel centers of cell (0,0)
@@ -240,7 +275,10 @@
       if (onProgress) onProgress(done, filled.length);
       const cell = extractCellCanvas(source, colXs[col], rowYs[row], cellW, cellH);
       const letter = await ocrLetter(w, upscale(cell));
-      if (letter) found.push({ row, col, letter });
+      if (!letter) continue;
+      const corner = extractCornerCanvas(source, colXs[col], rowYs[row], cellW, cellH);
+      const isBlank = await ocrIsBlankTile(w, corner);
+      found.push({ row, col, letter, isBlank });
     }
     if (onProgress) onProgress(filled.length, filled.length);
     return found;
