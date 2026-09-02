@@ -327,13 +327,13 @@
         const found = await CrossplayScan.scanBoardFromImage(scanImage, scanPoints, {
           onProgress: (done, total) => { scanProgress.textContent = `Scanning square ${done}/${total}…`; },
         });
-        for (const f of found) board.set(f.row, f.col, f.letter, false);
+        for (const f of found) board.set(f.row, f.col, f.letter, f.isBlank);
         clearPreview();
         renderBoard();
         setStatus(
-          `Scanned ${found.length} tile${found.length === 1 ? '' : 's'} from the photo. ` +
-          'Review the board and fix any misreads (OCR isn’t perfect), especially blanks — ' +
-          'those need to be re-typed in lowercase.'
+          `Scanned ${found.length} tile${found.length === 1 ? '' : 's'} from the photo ` +
+          '(blank tiles are detected automatically from their "0" point value). ' +
+          'Review the board and fix any misreads — OCR isn’t perfect.'
         );
       } else {
         const count = Math.max(1, Math.min(7, parseInt(rackCountInput.value, 10) || 7));
@@ -405,7 +405,7 @@
       const found = await CrossplayScan.scanBoardFromImage(img, boardPts, {
         onProgress: (done, total) => { autoScanStatus.textContent = `Reading the board… (${done}/${total})`; },
       });
-      for (const f of found) board.set(f.row, f.col, f.letter, false);
+      for (const f of found) board.set(f.row, f.col, f.letter, f.isBlank);
       clearPreview();
       renderBoard();
       boardCount = found.length;
